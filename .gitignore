@@ -13,3 +13,15 @@ data/raw/*.csv
 
 # Mongo volumes
 mongo-data/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Data
+data/raw/*.csv
+
+# OS
+.DS_Store
+Thumbs.db
