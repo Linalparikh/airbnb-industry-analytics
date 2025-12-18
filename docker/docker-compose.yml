@@ -1,0 +1,58 @@
+services:
+  mongo1:
+    image: mongo:7
+    container_name: mongo1
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo1_data:/data/db
+    networks: [mongo-net]
+
+  mongo2:
+    image: mongo:7
+    container_name: mongo2
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - mongo2_data:/data/db
+    networks: [mongo-net]
+
+  mongo3:
+    image: mongo:7
+    container_name: mongo3
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - mongo3_data:/data/db
+    networks: [mongo-net]
+
+  mongo-init:
+    image: mongo:7
+    container_name: mongo-init
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    volumes:
+      - ./mongo-init.js:/mongo-init.js:ro
+    entrypoint: ["bash", "-lc", "mongosh --host mongo1:27017 /mongo-init.js"]
+    networks: [mongo-net]
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    depends_on:
+      - mongo1
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo1
+      ME_CONFIG_BASICAUTH: "false"
+    networks: [mongo-net]
+
+networks:
+  mongo-net:
+
+volumes:
+  mongo1_data:
+  mongo2_data:
+  mongo3_data:

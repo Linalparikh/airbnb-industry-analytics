@@ -1,0 +1,6 @@
+pandas
+pymongo
+streamlit
+plotly
+pydeck
+python-dotenv

@@ -1,0 +1,15 @@
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment files
+.env
+
+# Raw data (large files)
+data/raw/*.csv
+
+# Mongo volumes
+mongo-data/
