@@ -15,7 +15,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# ---------- Styling (makes it look “industry”) ----------
 CUSTOM_CSS = """
 <style>
 .block-container { padding-top: 1.2rem; padding-bottom: 2rem; }
@@ -27,7 +26,6 @@ hr { margin: 1.2rem 0; opacity: 0.2; }
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-# ---------- Utility: pick columns safely ----------
 def pick_first(cols, candidates):
     cols_l = {c.lower(): c for c in cols}
     for cand in candidates:
@@ -35,7 +33,6 @@ def pick_first(cols, candidates):
             return cols_l[cand.lower()]
     return None
 
-# ---------- Caching ----------
 @st.cache_data(ttl=300)
 def get_counts():
     db = get_db()
@@ -50,12 +47,10 @@ def get_sample_listings(limit=SAMPLE_ROWS):
     db = get_db()
     listings, _ = get_cols(db)
 
-    # Sample inside MongoDB (fast + scalable)
     pipeline = [{"$sample": {"size": int(limit)}}]
     rows = list(listings.aggregate(pipeline, allowDiskUse=True))
     df = pd.DataFrame(rows)
 
-    # Drop Mongo _id to avoid rendering issues
     if "_id" in df.columns:
         df = df.drop(columns=["_id"])
 
@@ -80,8 +75,6 @@ def agg_top_locations(top_n=TOP_N_LOCATIONS):
     db = get_db()
     listings, _ = get_cols(db)
 
-    # We try common location fields (host_location, city, neighbourhood, etc.)
-    # We'll group by a “best available” field by checking one document first.
     sample = listings.find_one({}, projection={"host_location": 1, "city": 1, "neighbourhood": 1, "neighborhood": 1, "location": 1})
     possible_fields = ["host_location", "city", "neighbourhood", "neighborhood", "location"]
     chosen = None
@@ -108,7 +101,6 @@ def agg_price_stats():
     db = get_db()
     listings, _ = get_cols(db)
 
-    # Try to aggregate on “price” field if numeric-like
     pipeline = [
         {"$match": {"price": {"$exists": True, "$ne": None}}},
         {"$group": {
@@ -128,7 +120,6 @@ def agg_price_stats():
         "max_price": r.get("max_price"),
     }
 
-# ---------- Sidebar controls ----------
 st.sidebar.title("Filters")
 
 price_cap = st.sidebar.slider(
@@ -148,7 +139,6 @@ sample_n = st.sidebar.select_slider(
 st.sidebar.markdown("---")
 st.sidebar.caption("Tip: If charts look squeezed, lower the price cap.")
 
-# ---------- Header ----------
 st.title("🏠 Airbnb Analytics Dashboard (Industry Style)")
 st.markdown('<div class="small-note">MongoDB-backed, scalable aggregations + interactive visual analytics.</div>', unsafe_allow_html=True)
 
@@ -157,7 +147,6 @@ if not collections_exist(db):
     st.error("Mongo collections not found. Make sure you ingested data into MongoDB (listings_raw, reviews_raw).")
     st.stop()
 
-# ---------- KPIs ----------
 counts = get_counts()
 price_stats = agg_price_stats()
 
@@ -174,12 +163,8 @@ else:
 
 st.markdown("<hr/>", unsafe_allow_html=True)
 
-# ---------- Tabs (industry style) ----------
 tab1, tab2, tab3 = st.tabs(["📊 Overview", "🧭 Explore Listings", "🗺️ Map (if coords exist)"])
 
-# =========================
-# TAB 1: OVERVIEW
-# =========================
 with tab1:
     left, right = st.columns([1, 1])
 
@@ -214,15 +199,12 @@ with tab1:
         fig3.update_layout(height=350, xaxis_title=f"Price (capped at {price_cap})", yaxis_title="Count")
         st.plotly_chart(fig3, use_container_width=True)
 
-# =========================
-# TAB 2: EXPLORE LISTINGS
-# =========================
+
 with tab2:
     st.subheader("Interactive Listing Explorer")
 
     df = get_sample_listings(sample_n)
 
-    # Detect columns
     room_col = pick_first(df.columns, ["room_type", "roomType"])
     name_col = pick_first(df.columns, ["name", "listing_name", "title"])
     host_col = pick_first(df.columns, ["host_id", "hostId"])
@@ -230,7 +212,6 @@ with tab2:
     loc_col = pick_first(df.columns, ["host_location", "city", "neighbourhood", "neighborhood", "location"])
     price_col = pick_first(df.columns, ["price", "price_usd", "nightly_price"])
 
-    # Filters
     f1, f2, f3, f4 = st.columns(4)
 
     if room_col:
@@ -273,7 +254,6 @@ with tab2:
         dff = dff[dff[loc_col].isin(selected_locs)]
 
     if superhost_col and superhost_only:
-        # normalize values like 't','f', True/False, 'True'
         s = dff[superhost_col].astype(str).str.lower()
         dff = dff[s.isin(["t", "true", "1", "yes"])]
 
@@ -282,7 +262,6 @@ with tab2:
 
     st.markdown(f"✅ Filtered rows: **{len(dff):,}** (from sample {len(df):,})")
 
-    # Show summary charts for filtered data
     cA, cB = st.columns(2)
 
     with cA:
@@ -306,7 +285,6 @@ with tab2:
             st.info("No price data available for box plot.")
 
     st.subheader("Sample Records")
-    # Show best columns only
     show_cols = []
     for c in [name_col, room_col, loc_col, price_col, host_col, superhost_col]:
         if c and c in dff.columns:
@@ -317,9 +295,7 @@ with tab2:
     else:
         st.dataframe(dff.head(200), use_container_width=True)
 
-# =========================
-# TAB 3: MAP (if coords exist)
-# =========================
+
 with tab3:
     st.subheader("Map View (requires latitude/longitude fields)")
 
